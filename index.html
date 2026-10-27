@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prolog DOS Studio</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- JS-DOS v8 CSS & Script -->
+  <script src="https://v8.js-dos.com/latest/js-dos.js"></script>
+  <link rel="stylesheet" href="https://v8.js-dos.com/latest/js-dos.css">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b0f19;
+      color: #f1f5f9;
+    }
+
+    .font-mono-code {
+      font-family: 'Fira Code', monospace;
+    }
+
+    .dosbox-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background-color: #000;
+    }
+
+    .dosbox-container canvas {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: contain;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-4 sm:px-6 py-3">
+    <div class="max-w-5xl mx-auto flex flex-row items-center justify-between gap-3">
+      <div class="flex items-center space-x-2.5">
+        <div class="p-2 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-xl">
+          <i class="fa-solid fa-terminal text-lg sm:text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            Prolog DOS
+          </h1>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 text-xs">
+        <span id="emulator-status" class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse" id="status-indicator"></span>
+          <span id="status-text" class="font-medium text-[11px] sm:text-xs">Starting...</span>
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Viewport -->
+  <main class="max-w-5xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 flex-grow flex flex-col items-center justify-center gap-4">
+    
+    <div class="w-full grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-2.5">
+      <h1 class="text-4xl"> - Nour Shady - </h1>
+    </div>
+    <div class="w-full grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+      <button id="btn-load-local" class="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white font-medium py-2.5 px-3 rounded-xl shadow-lg shadow-indigo-600/20 text-xs sm:text-sm flex items-center justify-center gap-2 transition-all">
+        <i class="fa-solid fa-folder-open"></i>
+        <span>Load Local File</span>
+      </button>
+      <input type="file" id="file-input-load" class="hidden" accept=".zip,.jsdos">
+
+      <button id="btn-save-local" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-medium py-2.5 px-3 rounded-xl shadow-lg shadow-emerald-600/20 text-xs sm:text-sm flex items-center justify-center gap-2 transition-all">
+        <i class="fa-solid fa-floppy-disk"></i>
+        <span>Save Environment</span>
+      </button>
+
+      <button id="btn-fullscreen" class="col-span-2 sm:col-span-1 w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium py-2.5 px-3 rounded-xl text-xs sm:text-sm border border-slate-700 flex items-center justify-center gap-2 transition-colors">
+        <i class="fa-solid fa-expand"></i>
+        <span>Fullscreen</span>
+      </button>
+    </div>
+
+    <div class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 sm:p-3 shadow-2xl flex flex-col">
+      <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 px-1">
+        <div class="flex items-center gap-2">
+          <div class="flex gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500/80 inline-block"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500/80 inline-block"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80 inline-block"></span>
+          </div>
+          <span class="text-xs font-mono-code text-slate-400 ml-1">C:\PROLOG.EXE</span>
+        </div>
+        <div class="text-[10px] sm:text-[11px] font-mono-code text-slate-500">
+          MS-DOS WebAssembly
+        </div>
+      </div>
+
+      <div class="relative w-full aspect-[4/3] sm:aspect-[16/10] max-h-[70vh] bg-black rounded-lg overflow-hidden border border-slate-800" id="canvas-parent">
+        <div id="dos-container" class="dosbox-container"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="py-3 text-center text-[11px] text-slate-500 border-t border-slate-900">
+    Touch / Keyboard Input Supported
+  </footer>
+
+  <script>
+    let activeCi = null;
+
+    const statusText = document.getElementById('status-text');
+    const statusIndicator = document.getElementById('status-indicator');
+    const btnLoadLocal = document.getElementById('btn-load-local');
+    const btnSaveLocal = document.getElementById('btn-save-local');
+    const btnFullscreen = document.getElementById('btn-fullscreen');
+    const fileInputLoad = document.getElementById('file-input-load');
+
+    function updateStatus(state, text) {
+      statusText.innerText = text;
+      statusIndicator.className = 'w-2 h-2 rounded-full ';
+      
+      if (state === 'running') {
+        statusIndicator.classList.add('bg-emerald-400', 'animate-pulse');
+      } else if (state === 'loading') {
+        statusIndicator.classList.add('bg-amber-400', 'animate-pulse');
+      } else {
+        statusIndicator.classList.add('bg-slate-500');
+      }
+    }
+
+    async function stopCurrentSession() {
+      if (activeCi) {
+        try {
+          await activeCi.exit();
+        } catch (e) {
+          console.warn("Clean exit warning:", e);
+        }
+        activeCi = null;
+      }
+    }
+
+    async function bootDOS(targetBundle) {
+      updateStatus('loading', 'Loading Prolog...');
+
+      await stopCurrentSession();
+
+      const container = document.getElementById('dos-container');
+      container.innerHTML = ''; 
+
+      try {
+        const bundleUrl = targetBundle || './PROLOG.zip';
+
+        Dos(container, {
+          url: bundleUrl,
+          executable: 'PROLOG.EXE',
+          noHostServices: true,
+          onEvent: (event, ci) => {
+            if (event === "ci-ready") {
+              activeCi = ci;
+              updateStatus('running', 'Active');
+            }
+          }
+        });
+
+      } catch (err) {
+        console.error('JS-DOS Boot Error:', err);
+        updateStatus('error', 'Boot Failed');
+      }
+    }
+
+    btnLoadLocal.addEventListener('click', () => fileInputLoad.click());
+    fileInputLoad.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        const file = e.target.files[0];
+        const objectUrl = URL.createObjectURL(file);
+        bootDOS(objectUrl);
+      }
+    });
+
+    btnSaveLocal.addEventListener('click', async () => {
+      if (!activeCi) {
+        alert("Emulator is not running or ready yet.");
+        return;
+      }
+
+      try {
+        updateStatus('loading', 'Packaging ZIP...');
+        
+        const changesZip = await activeCi.persist();
+        if (!changesZip) {
+          alert("No workspace changes detected to save.");
+          updateStatus('running', 'Active');
+          return;
+        }
+
+        const blob = new Blob([changesZip], { type: "application/zip" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "PROLOG_SAVED.zip";
+        a.click();
+
+        updateStatus('running', 'Saved successfully');
+      } catch (e) {
+        console.error("Failed to export state:", e);
+        alert("Could not export local workspace.");
+        updateStatus('running', 'Active');
+      }
+    });
+
+    btnFullscreen.addEventListener('click', () => {
+      const parent = document.getElementById('canvas-parent');
+      if (parent.requestFullscreen) {
+        parent.requestFullscreen();
+      } else if (parent.webkitRequestFullscreen) {
+        parent.webkitRequestFullscreen();
+      }
+    });
+
+    window.addEventListener('load', () => {
+      bootDOS();
+    });
+  </script>
+</body>
+</html>
