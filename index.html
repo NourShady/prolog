@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Prolog DOS Studio</title>
   
   <!-- Tailwind CSS CDN -->
@@ -18,6 +18,13 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
     
+    html, body {
+      height: 100%;
+      height: -webkit-fill-available;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+
     body {
       font-family: 'Inter', sans-serif;
       background-color: #0b0f19;
@@ -39,27 +46,60 @@
       width: 100% !important;
       height: 100% !important;
       object-fit: contain;
+      touch-action: none;
+    }
+
+    /* Fullscreen Mode for Mobile */
+    .ios-mobile-fullscreen {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      height: -webkit-fill-available !important;
+      z-index: 99999 !important;
+      background-color: #000 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    .ios-mobile-fullscreen .dos-screen-wrapper {
+      flex-grow: 1 !important;
+      height: auto !important;
+    }
+
+    .touch-btn {
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    .touch-btn:active {
+      transform: scale(0.95);
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100">
+<body class="flex flex-col justify-between bg-slate-950 text-slate-100">
 
   <!-- Header -->
-  <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-4 sm:px-6 py-3">
+  <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur shrink-0 px-4 sm:px-6 py-2">
     <div class="max-w-5xl mx-auto flex flex-row items-center justify-between gap-3">
       <div class="flex items-center space-x-2.5">
-        <div class="p-2 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-xl">
-          <i class="fa-solid fa-terminal text-lg sm:text-xl"></i>
+        <div class="p-1.5 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-lg">
+          <i class="fa-solid fa-terminal text-base sm:text-lg"></i>
         </div>
         <div>
-          <h1 class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+          <h1 class="text-sm sm:text-base font-bold tracking-tight text-white">
             Prolog DOS
           </h1>
         </div>
       </div>
 
       <div class="flex items-center gap-2 text-xs">
-        <span id="emulator-status" class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+        <span id="emulator-status" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
           <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse" id="status-indicator"></span>
           <span id="status-text" class="font-medium text-[11px] sm:text-xs">Starting...</span>
         </span>
@@ -68,64 +108,267 @@
   </header>
 
   <!-- Main Viewport -->
-  <main class="max-w-5xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 flex-grow flex flex-col items-center justify-center gap-4">
+  <main id="main-container" class="max-w-5xl w-full mx-auto px-2 sm:px-6 py-1.5 sm:py-3 flex-grow flex flex-col items-center justify-start sm:justify-center gap-1.5 overflow-hidden">
     
-    <div class="w-full grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-2.5">
-      <h1 class="text-4xl"> - Nour Shady - </h1>
+    <div class="w-full flex items-center justify-between px-1">
+      <h1 class="text-base sm:text-xl font-bold text-slate-300">- Nour Shady -</h1>
+      
+      <div class="flex items-center gap-2">
+        <button id="btn-toggle-vkeyboard" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-1 px-2.5 rounded-lg text-xs border border-indigo-400/30 flex items-center gap-1.5 transition-all">
+          <i class="fa-solid fa-keyboard"></i>
+          <span id="vkbd-btn-text">Hide Keyboard</span>
+        </button>
+        <button id="btn-fullscreen" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium py-1 px-2.5 rounded-lg text-xs border border-slate-700 flex items-center gap-1.5 transition-colors">
+          <i class="fa-solid fa-expand"></i>
+          <span>Fullscreen</span>
+        </button>
+      </div>
     </div>
-    <div class="w-full grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-      <button id="btn-load-local" class="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white font-medium py-2.5 px-3 rounded-xl shadow-lg shadow-indigo-600/20 text-xs sm:text-sm flex items-center justify-center gap-2 transition-all">
+
+    <!-- Storage & Environment Action Buttons -->
+    <div class="w-full grid grid-cols-2 gap-2">
+      <button id="btn-load-local" class="bg-indigo-600/80 hover:bg-indigo-500 active:scale-[0.98] text-white font-medium py-1.5 px-2 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-all">
         <i class="fa-solid fa-folder-open"></i>
-        <span>Load Local File</span>
+        <span>Load Zip</span>
       </button>
       <input type="file" id="file-input-load" class="hidden" accept=".zip,.jsdos">
 
-      <button id="btn-save-local" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-medium py-2.5 px-3 rounded-xl shadow-lg shadow-emerald-600/20 text-xs sm:text-sm flex items-center justify-center gap-2 transition-all">
+      <button id="btn-save-local" class="bg-emerald-600/80 hover:bg-emerald-500 active:scale-[0.98] text-white font-medium py-1.5 px-2 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-all">
         <i class="fa-solid fa-floppy-disk"></i>
-        <span>Save Environment</span>
-      </button>
-
-      <button id="btn-fullscreen" class="col-span-2 sm:col-span-1 w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium py-2.5 px-3 rounded-xl text-xs sm:text-sm border border-slate-700 flex items-center justify-center gap-2 transition-colors">
-        <i class="fa-solid fa-expand"></i>
-        <span>Fullscreen</span>
+        <span>Save Workspace</span>
       </button>
     </div>
 
-    <div class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 sm:p-3 shadow-2xl flex flex-col">
-      <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 px-1">
+    <!-- DOS Box Card Container -->
+    <div id="canvas-parent" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-1.5 sm:p-2.5 shadow-2xl flex flex-col flex-grow max-h-full overflow-hidden">
+      
+      <div class="flex items-center justify-between pb-1 mb-1 border-b border-slate-800 px-1 shrink-0">
         <div class="flex items-center gap-2">
           <div class="flex gap-1.5">
             <span class="w-2.5 h-2.5 rounded-full bg-rose-500/80 inline-block"></span>
             <span class="w-2.5 h-2.5 rounded-full bg-amber-500/80 inline-block"></span>
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80 inline-block"></span>
           </div>
-          <span class="text-xs font-mono-code text-slate-400 ml-1">C:\PROLOG.EXE</span>
+          <span class="text-[11px] font-mono-code text-slate-400 ml-1">C:\PROLOG.EXE</span>
         </div>
-        <div class="text-[10px] sm:text-[11px] font-mono-code text-slate-500">
-          MS-DOS WebAssembly
-        </div>
+        <button id="btn-close-fullscreen" class="hidden text-xs text-rose-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 font-medium">
+          <i class="fa-solid fa-xmark"></i> Exit
+        </button>
       </div>
 
-      <div class="relative w-full aspect-[4/3] sm:aspect-[16/10] max-h-[70vh] bg-black rounded-lg overflow-hidden border border-slate-800" id="canvas-parent">
+      <!-- DOS Screen -->
+      <div class="dos-screen-wrapper relative w-full flex-grow min-h-[180px] bg-black rounded-lg overflow-hidden border border-slate-800">
         <div id="dos-container" class="dosbox-container"></div>
       </div>
+
+      <!-- Virtual Keyboard & Controls Container -->
+      <div id="virtual-keyboard-panel" class="w-full mt-1.5 pt-1.5 border-t border-slate-800/80 flex flex-col gap-1 shrink-0">
+        
+        <!-- Turbo Prolog Menu Hotkeys -->
+        <div class="grid grid-cols-4 gap-1 text-xs font-mono-code">
+          <button onclick="sendAltHotkey('r')" class="touch-btn bg-indigo-950/90 hover:bg-indigo-900 text-indigo-300 border border-indigo-800/60 py-1.5 rounded text-[11px] font-bold shadow flex items-center justify-center gap-1">
+            <i class="fa-solid fa-play text-[9px]"></i> ALT+R
+          </button>
+          <button onclick="sendAltHotkey('e')" class="touch-btn bg-indigo-950/90 hover:bg-indigo-900 text-indigo-300 border border-indigo-800/60 py-1.5 rounded text-[11px] font-bold shadow flex items-center justify-center gap-1">
+            <i class="fa-solid fa-pen-to-square text-[9px]"></i> ALT+E
+          </button>
+          <button onclick="sendAltHotkey('f')" class="touch-btn bg-indigo-950/90 hover:bg-indigo-900 text-indigo-300 border border-indigo-800/60 py-1.5 rounded text-[11px] font-bold shadow flex items-center justify-center gap-1">
+            <i class="fa-solid fa-file text-[9px]"></i> ALT+F
+          </button>
+          <button onclick="sendAltHotkey('s')" class="touch-btn bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/60 py-1.5 rounded text-[11px] font-bold shadow flex items-center justify-center gap-1">
+            <i class="fa-solid fa-floppy-disk text-[9px]"></i> ALT+S
+          </button>
+        </div>
+
+        <!-- Prolog Specific Symbols & Math Operators Row -->
+        <div class="flex items-center justify-between gap-1 font-mono-code text-xs overflow-x-auto py-0.5">
+          <button onclick="sendChar('+')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2 py-1 rounded border border-slate-700 font-bold">+</button>
+          <button onclick="sendChar('-')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2 py-1 rounded border border-slate-700 font-bold">-</button>
+          <button onclick="sendChar('*')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2 py-1 rounded border border-slate-700 font-bold">*</button>
+          <button onclick="sendChar('/')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2 py-1 rounded border border-slate-700 font-bold">/</button>
+          <button onclick="sendChar(':')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-1 rounded border border-slate-700 font-bold">:</button>
+          <button onclick="sendPrologRule()" class="touch-btn bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-1 rounded border border-slate-700 font-bold">:-</button>
+          <button onclick="sendChar(',')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-1 rounded border border-slate-700 font-bold">,</button>
+          <button onclick="sendChar('.')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-1 rounded border border-slate-700 font-bold">.</button>
+          <button onclick="sendChar('(')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-sky-300 px-2 py-1 rounded border border-slate-700 font-bold">(</button>
+          <button onclick="sendChar(')')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-sky-300 px-2 py-1 rounded border border-slate-700 font-bold">)</button>
+          <button onclick="sendChar('[')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-sky-300 px-2 py-1 rounded border border-slate-700 font-bold">[</button>
+          <button onclick="sendChar(']')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-sky-300 px-2 py-1 rounded border border-slate-700 font-bold">]</button>
+          <button onclick="sendChar('_')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-emerald-300 px-2 py-1 rounded border border-slate-700 font-bold">_</button>
+        </div>
+
+        <!-- On-Screen QWERTY Virtual Keyboard -->
+        <div id="v-keypad" class="flex flex-col gap-1 select-none pt-0.5">
+          <!-- Row 1: Numbers -->
+          <div class="flex justify-center gap-0.5 text-xs font-mono-code">
+            <button onclick="sendChar('1')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">1</button>
+            <button onclick="sendChar('2')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">2</button>
+            <button onclick="sendChar('3')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">3</button>
+            <button onclick="sendChar('4')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">4</button>
+            <button onclick="sendChar('5')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">5</button>
+            <button onclick="sendChar('6')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">6</button>
+            <button onclick="sendChar('7')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">7</button>
+            <button onclick="sendChar('8')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">8</button>
+            <button onclick="sendChar('9')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">9</button>
+            <button onclick="sendChar('0')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">0</button>
+          </div>
+
+          <!-- Row 2: QWERTY -->
+          <div class="flex justify-center gap-0.5 text-xs font-mono-code">
+            <button onclick="sendChar('q')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">q</button>
+            <button onclick="sendChar('w')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">w</button>
+            <button onclick="sendChar('e')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">e</button>
+            <button onclick="sendChar('r')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">r</button>
+            <button onclick="sendChar('t')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">t</button>
+            <button onclick="sendChar('y')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">y</button>
+            <button onclick="sendChar('u')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">u</button>
+            <button onclick="sendChar('i')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">i</button>
+            <button onclick="sendChar('o')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">o</button>
+            <button onclick="sendChar('p')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">p</button>
+          </div>
+
+          <!-- Row 3: ASDFGHJKL -->
+          <div class="flex justify-center gap-0.5 text-xs font-mono-code px-2">
+            <button onclick="sendChar('a')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">a</button>
+            <button onclick="sendChar('s')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">s</button>
+            <button onclick="sendChar('d')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">d</button>
+            <button onclick="sendChar('f')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">f</button>
+            <button onclick="sendChar('g')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">g</button>
+            <button onclick="sendChar('h')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">h</button>
+            <button onclick="sendChar('j')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">j</button>
+            <button onclick="sendChar('k')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">k</button>
+            <button onclick="sendChar('l')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">l</button>
+          </div>
+
+          <!-- Row 4: Shift / ZXCVBNM / Backspace -->
+          <div class="flex justify-center gap-0.5 text-xs font-mono-code">
+            <button id="btn-shift" onclick="toggleShift()" class="touch-btn bg-slate-700 hover:bg-slate-600 text-amber-300 w-10 py-1 rounded text-center border border-slate-600 font-bold">⇧</button>
+            <button onclick="sendChar('z')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">z</button>
+            <button onclick="sendChar('x')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">x</button>
+            <button onclick="sendChar('c')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">c</button>
+            <button onclick="sendChar('v')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">v</button>
+            <button onclick="sendChar('b')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">b</button>
+            <button onclick="sendChar('n')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">n</button>
+            <button onclick="sendChar('m')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-200 flex-1 py-1 rounded text-center border border-slate-700/80">m</button>
+            <button onclick="sendSpecialKey('Backspace')" class="touch-btn bg-slate-700 hover:bg-slate-600 text-rose-300 w-10 py-1 rounded text-center border border-slate-600 font-bold">⌫</button>
+          </div>
+        </div>
+
+        <!-- Navigation D-Pad, Space, Enter & Special Controls -->
+        <div class="flex items-center justify-between gap-1 pt-1 border-t border-slate-800/60">
+          
+          <div class="flex gap-1">
+            <button onclick="sendSpecialKey('Escape')" class="touch-btn bg-slate-800 text-slate-300 hover:bg-slate-700 px-2 py-1.5 rounded text-xs font-semibold border border-slate-700">ESC</button>
+            <button onclick="sendSpecialKey('Tab')" class="touch-btn bg-slate-800 text-slate-300 hover:bg-slate-700 px-2 py-1.5 rounded text-xs font-semibold border border-slate-700">TAB</button>
+          </div>
+
+          <button onclick="sendChar(' ')" class="touch-btn bg-slate-800 hover:bg-slate-700 text-slate-300 flex-grow py-1.5 rounded text-xs font-semibold border border-slate-700 text-center">
+            SPACE
+          </button>
+
+          <!-- D-Pad Arrows -->
+          <div class="flex items-center gap-0.5">
+            <button onclick="sendSpecialKey('ArrowLeft')" class="touch-btn bg-slate-800 active:bg-indigo-600 text-white w-7 h-7 rounded flex items-center justify-center border border-slate-700 text-xs">◄</button>
+            <div class="flex flex-col gap-0.5">
+              <button onclick="sendSpecialKey('ArrowUp')" class="touch-btn bg-slate-800 active:bg-indigo-600 text-white w-7 h-3.5 rounded flex items-center justify-center border border-slate-700 text-[9px]">▲</button>
+              <button onclick="sendSpecialKey('ArrowDown')" class="touch-btn bg-slate-800 active:bg-indigo-600 text-white w-7 h-3.5 rounded flex items-center justify-center border border-slate-700 text-[9px]">▼</button>
+            </div>
+            <button onclick="sendSpecialKey('ArrowRight')" class="touch-btn bg-slate-800 active:bg-indigo-600 text-white w-7 h-7 rounded flex items-center justify-center border border-slate-700 text-xs">►</button>
+          </div>
+
+          <button onclick="sendSpecialKey('Enter')" class="touch-btn bg-indigo-600 active:bg-indigo-500 text-white px-3 py-1.5 rounded text-xs font-bold shadow border border-indigo-400/30">
+            ENTER ↵
+          </button>
+
+        </div>
+
+      </div>
+
     </div>
 
   </main>
 
-  <footer class="py-3 text-center text-[11px] text-slate-500 border-t border-slate-900">
-    Touch / Keyboard Input Supported
+  <footer class="py-1 text-center text-[10px] sm:text-[11px] text-slate-500 border-t border-slate-900 shrink-0">
+    Prolog Mobile IDE • Optimized for iOS & Virtual Keypad
   </footer>
 
   <script>
     let activeCi = null;
+    let isShiftActive = false;
 
     const statusText = document.getElementById('status-text');
     const statusIndicator = document.getElementById('status-indicator');
     const btnLoadLocal = document.getElementById('btn-load-local');
     const btnSaveLocal = document.getElementById('btn-save-local');
     const btnFullscreen = document.getElementById('btn-fullscreen');
+    const btnCloseFullscreen = document.getElementById('btn-close-fullscreen');
+    const btnToggleVKboard = document.getElementById('btn-toggle-vkeyboard');
+    const virtualKeyboardPanel = document.getElementById('virtual-keyboard-panel');
+    const vkbdBtnText = document.getElementById('vkbd-btn-text');
     const fileInputLoad = document.getElementById('file-input-load');
+    const canvasParent = document.getElementById('canvas-parent');
+
+    // Default DOSBox Configuration to bypass .jsdos/dosbox.conf missing error
+    const DEFAULT_DOSBOX_CONF = `
+[autoexec]
+@echo off
+PROLOG.EXE
+    `;
+
+    // JS-DOS / DOSBox Key Code Map
+    const DOS_KEY_MAP = {
+      'a': { code: 'KeyA', keyCode: 65 },
+      'b': { code: 'KeyB', keyCode: 66 },
+      'c': { code: 'KeyC', keyCode: 67 },
+      'd': { code: 'KeyD', keyCode: 68 },
+      'e': { code: 'KeyE', keyCode: 69 },
+      'f': { code: 'KeyF', keyCode: 70 },
+      'g': { code: 'KeyG', keyCode: 71 },
+      'h': { code: 'KeyH', keyCode: 72 },
+      'i': { code: 'KeyI', keyCode: 73 },
+      'j': { code: 'KeyJ', keyCode: 74 },
+      'k': { code: 'KeyK', keyCode: 75 },
+      'l': { code: 'KeyL', keyCode: 76 },
+      'm': { code: 'KeyM', keyCode: 77 },
+      'n': { code: 'KeyN', keyCode: 78 },
+      'o': { code: 'KeyO', keyCode: 79 },
+      'p': { code: 'KeyP', keyCode: 80 },
+      'q': { code: 'KeyQ', keyCode: 81 },
+      'r': { code: 'KeyR', keyCode: 82 },
+      's': { code: 'KeyS', keyCode: 83 },
+      't': { code: 'KeyT', keyCode: 84 },
+      'u': { code: 'KeyU', keyCode: 85 },
+      'v': { code: 'KeyV', keyCode: 86 },
+      'w': { code: 'KeyW', keyCode: 87 },
+      'x': { code: 'KeyX', keyCode: 88 },
+      'y': { code: 'KeyY', keyCode: 89 },
+      'z': { code: 'KeyZ', keyCode: 90 },
+      '0': { code: 'Digit0', keyCode: 48 },
+      '1': { code: 'Digit1', keyCode: 49 },
+      '2': { code: 'Digit2', keyCode: 50 },
+      '3': { code: 'Digit3', keyCode: 51 },
+      '4': { code: 'Digit4', keyCode: 52 },
+      '5': { code: 'Digit5', keyCode: 53 },
+      '6': { code: 'Digit6', keyCode: 54 },
+      '7': { code: 'Digit7', keyCode: 55 },
+      '8': { code: 'Digit8', keyCode: 56 },
+      '9': { code: 'Digit9', keyCode: 57 },
+      ' ': { code: 'Space', keyCode: 32 },
+      '+': { code: 'Equal', keyCode: 187, shift: true },
+      '-': { code: 'Minus', keyCode: 189 },
+      '*': { code: 'Digit8', keyCode: 56, shift: true },
+      '/': { code: 'Slash', keyCode: 191 },
+      ':': { code: 'Semicolon', keyCode: 186, shift: true },
+      ',': { code: 'Comma', keyCode: 188 },
+      '.': { code: 'Period', keyCode: 190 },
+      '(': { code: 'Digit9', keyCode: 57, shift: true },
+      ')': { code: 'Digit0', keyCode: 48, shift: true },
+      '[': { code: 'BracketLeft', keyCode: 219 },
+      ']': { code: 'BracketRight', keyCode: 221 },
+      '_': { code: 'Minus', keyCode: 189, shift: true },
+      '?': { code: 'Slash', keyCode: 191, shift: true },
+      '!': { code: 'Digit1', keyCode: 49, shift: true }
+    };
 
     function updateStatus(state, text) {
       statusText.innerText = text;
@@ -165,7 +408,9 @@
         Dos(container, {
           url: bundleUrl,
           executable: 'PROLOG.EXE',
+          dosboxConf: DEFAULT_DOSBOX_CONF, // Inject fallback configuration
           noHostServices: true,
+          noSideBar: true,
           onEvent: (event, ci) => {
             if (event === "ci-ready") {
               activeCi = ci;
@@ -219,14 +464,154 @@
       }
     });
 
-    btnFullscreen.addEventListener('click', () => {
-      const parent = document.getElementById('canvas-parent');
-      if (parent.requestFullscreen) {
-        parent.requestFullscreen();
-      } else if (parent.webkitRequestFullscreen) {
-        parent.webkitRequestFullscreen();
+    // Send Character to DOS Box with Exact Keyboard Mapping
+    function sendChar(char) {
+      let targetChar = char.toLowerCase();
+      let forceShift = isShiftActive;
+
+      if (isShiftActive && /[a-z]/.test(char)) {
+        targetChar = char.toLowerCase();
+        forceShift = true;
+      }
+
+      const map = DOS_KEY_MAP[targetChar] || { code: `Key${char.toUpperCase()}`, keyCode: char.charCodeAt(0) };
+      const canvas = document.querySelector('#dos-container canvas');
+      
+      if (!canvas) return;
+      canvas.focus();
+
+      const isShiftNeeded = forceShift || map.shift;
+
+      if (isShiftNeeded) {
+        canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift', code: 'ShiftLeft', keyCode: 16, which: 16, shiftKey: true, bubbles: true }));
+      }
+
+      const keyVal = forceShift ? targetChar.toUpperCase() : targetChar;
+      const opts = {
+        key: keyVal,
+        code: map.code,
+        keyCode: map.keyCode,
+        which: map.keyCode,
+        charCode: map.keyCode,
+        shiftKey: isShiftNeeded,
+        bubbles: true
+      };
+
+      canvas.dispatchEvent(new KeyboardEvent('keydown', opts));
+      canvas.dispatchEvent(new KeyboardEvent('keypress', opts));
+      canvas.dispatchEvent(new KeyboardEvent('keyup', opts));
+
+      if (isShiftNeeded) {
+        canvas.dispatchEvent(new KeyboardEvent('keyup', { key: 'Shift', code: 'ShiftLeft', keyCode: 16, which: 16, shiftKey: false, bubbles: true }));
+      }
+
+      if (isShiftActive) {
+        toggleShift();
+      }
+    }
+
+    function sendPrologRule() {
+      sendChar(':');
+      sendChar('-');
+    }
+
+    // Direct Alt Combo Handling for Turbo Prolog Hotkeys (Alt+E, Alt+F, Alt+R, Alt+S)
+    function sendAltHotkey(char) {
+      const map = DOS_KEY_MAP[char.toLowerCase()];
+      if (!map) return;
+
+      const canvas = document.querySelector('#dos-container canvas');
+      if (!canvas) return;
+
+      canvas.focus();
+
+      // Trigger Alt Keydown Sequence
+      canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt', code: 'AltLeft', keyCode: 18, which: 18, altKey: true, bubbles: true }));
+      
+      setTimeout(() => {
+        const keyOpts = { key: char.toLowerCase(), code: map.code, keyCode: map.keyCode, which: map.keyCode, charCode: map.keyCode, altKey: true, bubbles: true };
+        canvas.dispatchEvent(new KeyboardEvent('keydown', keyOpts));
+        canvas.dispatchEvent(new KeyboardEvent('keypress', keyOpts));
+        canvas.dispatchEvent(new KeyboardEvent('keyup', keyOpts));
+
+        setTimeout(() => {
+          canvas.dispatchEvent(new KeyboardEvent('keyup', { key: 'Alt', code: 'AltLeft', keyCode: 18, which: 18, altKey: false, bubbles: true }));
+        }, 30);
+      }, 30);
+    }
+
+    // Special Keys (Arrows, Enter, Backspace, ESC, Tab)
+    function sendSpecialKey(keyName) {
+      const canvas = document.querySelector('#dos-container canvas');
+      if (!canvas) return;
+      canvas.focus();
+
+      const keyMap = {
+        'ArrowLeft': { code: 'ArrowLeft', keyCode: 37 },
+        'ArrowUp': { code: 'ArrowUp', keyCode: 38 },
+        'ArrowRight': { code: 'ArrowRight', keyCode: 39 },
+        'ArrowDown': { code: 'ArrowDown', keyCode: 40 },
+        'Enter': { code: 'Enter', keyCode: 13 },
+        'Backspace': { code: 'Backspace', keyCode: 8 },
+        'Escape': { code: 'Escape', keyCode: 27 },
+        'Tab': { code: 'Tab', keyCode: 9 }
+      };
+
+      const item = keyMap[keyName];
+      if (item) {
+        const opts = { key: keyName, code: item.code, keyCode: item.keyCode, which: item.keyCode, bubbles: true };
+        canvas.dispatchEvent(new KeyboardEvent('keydown', opts));
+        canvas.dispatchEvent(new KeyboardEvent('keyup', opts));
+      }
+    }
+
+    // Toggle Virtual Keyboard Shift Mode
+    function toggleShift() {
+      isShiftActive = !isShiftActive;
+      const btnShift = document.getElementById('btn-shift');
+      if (isShiftActive) {
+        btnShift.classList.add('bg-amber-500', 'text-slate-950');
+        btnShift.classList.remove('bg-slate-700', 'text-amber-300');
+      } else {
+        btnShift.classList.remove('bg-amber-500', 'text-slate-950');
+        btnShift.classList.add('bg-slate-700', 'text-amber-300');
+      }
+    }
+
+    // Toggle Keyboard Panel Visibility
+    btnToggleVKboard.addEventListener('click', () => {
+      const isHidden = virtualKeyboardPanel.classList.contains('hidden');
+      if (isHidden) {
+        virtualKeyboardPanel.classList.remove('hidden');
+        vkbdBtnText.innerText = "Hide Keyboard";
+      } else {
+        virtualKeyboardPanel.classList.add('hidden');
+        vkbdBtnText.innerText = "Show Keyboard";
       }
     });
+
+    // Fullscreen Toggle
+    function toggleMobileFullscreen() {
+      const isFullscreen = canvasParent.classList.contains('ios-mobile-fullscreen');
+
+      if (!isFullscreen) {
+        canvasParent.classList.add('ios-mobile-fullscreen');
+        btnCloseFullscreen.classList.remove('hidden');
+      } else {
+        canvasParent.classList.remove('ios-mobile-fullscreen');
+        btnCloseFullscreen.classList.add('hidden');
+      }
+    }
+
+    btnFullscreen.addEventListener('click', toggleMobileFullscreen);
+    btnCloseFullscreen.addEventListener('click', toggleMobileFullscreen);
+
+    // Viewport adjustment
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+        document.body.style.height = `${window.visualViewport.height}px`;
+      });
+    }
 
     window.addEventListener('load', () => {
       bootDOS();
